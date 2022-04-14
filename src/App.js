@@ -1,6 +1,7 @@
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import {
+  Alert,
   Badge,
   ButtonGroup,
   Button,
@@ -11,12 +12,15 @@ import {
 import { useState, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "./core/db";
+import { FaLocationArrow } from "react-icons/fa";
 
 const allCategories = "all";
-
 function App() {
   const [selectedCategory, setSelectedCategory] = useState(allCategories);
   const [items, setItems] = useState([]);
+  const [locationError, setLocationError] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
+  const [location, setLocation] = useState("");
 
   useEffect(() => {
     const itemsColRef = query(collection(db, "items"), orderBy("title", "asc"));
@@ -45,6 +49,31 @@ function App() {
     }
   }
 
+  const getLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+    } else {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocationError("");
+          setIsLocating(false);
+          setLocation(position.coords);
+        },
+        () => {
+          setIsLocating(false);
+          setLocationError("Unable to retrieve your location");
+        }
+      );
+    }
+  };
+
+  const closeMapInfo = () => {
+    setIsLocating(false);
+    setLocation(null);
+    setLocationError("");
+  };
+
   return (
     <div className="App">
       <ButtonGroup className="category-toolbar">
@@ -69,7 +98,32 @@ function App() {
             Category D
           </Dropdown.Item>
         </DropdownButton>
+
+        <Button variant="outline-info" onClick={() => getLocation()}>
+          <FaLocationArrow />
+        </Button>
       </ButtonGroup>
+
+      {!!locationError && (
+        <Alert variant="warning" onClose={() => closeMapInfo()} dismissible>
+          {locationError}
+        </Alert>
+      )}
+      {!!isLocating && <Alert variant="light">Locating...</Alert>}
+      {!!location && (
+        <div class="location-info">
+          <Alert variant="info" onClose={() => closeMapInfo()} dismissible>
+            Latitude: {location.latitude} | longitude: {location.longitude}
+          </Alert>
+          <Button
+            href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+            target="_blank"
+          >
+            Open map
+          </Button>
+        </div>
+      )}
+
       <ListGroup>
         {items.map(
           (item) =>
