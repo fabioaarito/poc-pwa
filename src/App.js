@@ -8,10 +8,15 @@ import {
   Dropdown,
   DropdownButton,
   ListGroup,
+  Toast,
 } from "react-bootstrap";
 import { useState, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "./core/db";
+import {
+  db,
+  getFirebaseMessagingToken,
+  onMessageListener,
+} from "./core/firebase";
 import { FaLocationArrow } from "react-icons/fa";
 
 const allCategories = "all";
@@ -21,6 +26,14 @@ function App() {
   const [locationError, setLocationError] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [location, setLocation] = useState("");
+  const [show, setShow] = useState(false);
+  const [notification, setNotification] = useState({ title: "", body: "" });
+
+  /**
+   * Push notifications
+   */
+  // eslint-disable-next-line
+  const [isTokenFound, setTokenFound] = useState(false);
 
   useEffect(() => {
     const itemsColRef = query(collection(db, "items"), orderBy("title", "asc"));
@@ -32,6 +45,19 @@ function App() {
         }))
       );
     });
+    getFirebaseMessagingToken(setTokenFound);
+
+    onMessageListener()
+      .then((payload) => {
+        setShow(true);
+        setNotification({
+          title: payload.notification.title,
+          body: payload.notification.body,
+        });
+        console.log("Show notification");
+        console.log(payload);
+      })
+      .catch((err) => console.log("failed: ", err));
   }, []);
 
   function getCategoryColor(category) {
@@ -124,6 +150,26 @@ function App() {
         </div>
       )}
 
+      <Toast
+        onClose={() => setShow(false)}
+        show={show}
+        delay={3000}
+        autohide
+        animation
+        style={{
+          position: "absolute",
+          top: 20,
+          right: 20,
+          minWidth: 200,
+        }}
+      >
+        <Toast.Header>
+          <img src="holder.js/20x20?text=%20" className="rounded mr-2" alt="" />
+          <strong className="mr-auto">{notification.title}</strong>
+          <small>just now</small>
+        </Toast.Header>
+        <Toast.Body>{notification.body}</Toast.Body>
+      </Toast>
       <ListGroup>
         {items.map(
           (item) =>
